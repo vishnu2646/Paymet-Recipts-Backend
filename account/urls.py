@@ -11,7 +11,6 @@ from account.views import (
     ExpenseTypeList,
     IncomeDetail,
     IncomeTypeList,
-    ReportGeneration,
     UpdateExpense,
     UpdateIncome,
     AddIncome,
@@ -50,6 +49,4 @@ urlpatterns = [
 
     path('incometype/list/', IncomeTypeList, name='income-type-list'),
     path('incometype/create/', AddIncomeType.as_view(), name='income-type-create'),
-
-    path('report/', ReportGeneration, name='report'),
 ]

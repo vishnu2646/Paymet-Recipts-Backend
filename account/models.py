@@ -106,7 +106,7 @@ class Expense(models.Model):
     details = models.TextField(null=True,max_length=255,blank=True)
 
     def __str__(self):
-        return self.income_name
+        return self.expense_name
 
 class IncomeType(models.Model):
     typeid = models.IntegerField()

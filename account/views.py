@@ -20,7 +20,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from django.db.models import Sum
 from django.views.decorators.csrf import csrf_exempt
 
 # Generate Token Manually
@@ -219,24 +218,3 @@ class AddIncomeType(APIView):
                 serializer.save()
             return Response("Income Type saved successfully", status=status.HTTP_200_OK) 
         return Response("User is not authorized to create a new income type", status=status.HTTP_401_UNAUTHORIZED)
-
-@api_view(['GET'])
-def ReportGeneration(request):
-    incomes = Income.objects.all()
-    expenses = Expense.objects.all()
-
-    incomeTotal = 0
-    for income in incomes:
-        incomeTotal += income.amount
-
-    expenseTotal = 0
-    for expense in expenses:
-        expenseTotal += expense.amount
-
-    incomeNameTotalAmount = Income.objects.values('income_name').annotate(total_amt = Sum('amount'))
-    expenseNameTotalAmount = Expense.objects.values('expense_name').annotate(total_amt = Sum('amount'))
-
-    print(incomeNameTotalAmount,"Income Name Total amount")
-    print(expenseNameTotalAmount,"Exense Name Total amount")
-
-    return Response("Report Generated saved successfully", status=status.HTTP_200_OK)
