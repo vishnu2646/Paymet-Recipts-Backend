@@ -2,7 +2,7 @@ from dataclasses import fields
 from pyexpat import model
 from re import I
 from rest_framework import serializers
-from .models import ExpenseType, Income, IncomeType, User, Expense
+from .models import ExpenseType, Income, IncomeType, User, Expense, Opening
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -127,22 +127,31 @@ class UserPasswordResetSerializer(serializers.Serializer):
             PasswordResetTokenGenerator().check_token(user, token)
             raise serializers.ValidationError('Token is not Valid or Expired')
 
-class GetIncomeSerializaer(serializers.ModelSerializer):
+class GetIncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = '__all__'
+        fields = ['incid', 'income_name', 'amount', 'date', 'mode', 'reason', 'income_by', 'bankname', 'chequeordd', 'dateinbank', 'details']
 
-class GetExchangeSerializaer(serializers.ModelSerializer):
+class GetExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
-        fields = '__all__'
+        fields = ['expid', 'expense_name', 'amount', 'date', 'mode', 'reason', 'expense_by', 'bankname', 'chequeordd', 'dateinbank', 'details']
 
-class ExpenseTypeSerializaer(serializers.ModelSerializer):
+class ExpenseTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseType
         fields = '__all__'
 
-class IncomeTypeSerializaer(serializers.ModelSerializer):
+class IncomeTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = IncomeType
         fields = '__all__'
+
+class OpeningSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Opening
+        fields = '__all__'
+
+class BarChartDataSerializer(serializers.Serializer):
+    labels = serializers.ListField(child=serializers.CharField())
+    data = serializers.ListField(child=serializers.DecimalField(max_digits=10, decimal_places=2))
