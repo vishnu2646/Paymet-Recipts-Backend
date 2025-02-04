@@ -129,9 +129,9 @@ def IncomeList(request):
     return Response('User is not authenticated', status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
-def IncomeDetail(request, pk):
+def IncomeDetail(request, incid):
     if(request.user.is_authenticated):
-        income = Income.objects.get(id=pk)
+        income = Income.objects.get(incid=incid)
         serializer = GetIncomeSerializer(income, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response("User is not authenticated", status=status.HTTP_401_UNAUTHORIZED)
@@ -148,16 +148,17 @@ class AddIncome(APIView):
         return Response("User is not authorized to create a new income", status=status.HTTP_401_UNAUTHORIZED)
 
 class UpdateIncome(APIView):
-    def post(self, request, pk):
-        income = Income.objects.get(id=pk)
+    def post(self, request, incid):
+        print(incid, "pk")
+        income = Income.objects.get(incid=incid)
         serializer = GetIncomeSerializer(instance=income,data=request.data)
         if(serializer.is_valid()):
             serializer.save()
             return Response("Income Updated successfully", status=status.HTTP_200_OK)
 
 @api_view(['DELETE'])
-def DeleteIncome(request, pk):
-    income = Income.objects.get(id=pk)
+def DeleteIncome(request, incid):
+    income = Income.objects.get(incid=incid)
     income.delete()
     return Response("Income Deleted successfully", status=status.HTTP_200_OK)
 
@@ -170,9 +171,9 @@ def ExpenseList(requet):
     return Response('User is Not Authenticated', status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
-def ExpenseDetail(request, pk):
+def ExpenseDetail(request, expid):
     if(request.user.is_authenticated):
-        expense = Expense.objects.get(id=pk)
+        expense = Expense.objects.get(expid=expid)
         serializer = GetExpenseSerializer(expense, many=False)
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response("User is not authenticated", status=status.HTTP_401_UNAUTHORIZED)
@@ -189,16 +190,16 @@ class AddExpense(APIView):
         return Response("User is not authorized to create a new expense", status=status.HTTP_401_UNAUTHORIZED)
 
 class UpdateExpense(APIView):
-    def post(self, request, pk):
-        expense = Expense.objects.get(id=pk)
+    def post(self, request, expid):
+        expense = Expense.objects.get(expid=expid)
         serializer = GetExpenseSerializer(instance=expense,data=request.data)
         if(serializer.is_valid()):
             serializer.save()
             return Response("Expense Updated successfully", status=status.HTTP_200_OK)
 
 @api_view(['DELETE'])
-def DeleteExpense(request, pk):
-    expense = Expense.objects.get(id=pk)
+def DeleteExpense(request, expid):
+    expense = Expense.objects.get(expid=expid)
     expense.delete()
     return Response("Expense Deleted successfully", status=status.HTTP_200_OK)
 
@@ -286,33 +287,96 @@ class ReportView(APIView):
             expenseData = expenseSerializer.data
             openingData = openingSerializer.data
 
-            tot = sum(income['amount'] for income in incomeData)
+            incomeAmountTotal = sum(income['amount'] for income in incomeData)
 
-            amt = sum(expense['amount'] for expense in expenseData)
+            lastYearIncomeTotal = 0
 
-            fin = amt + tot
+            for opening in openingData:
+                lastYearIncomeTotal = opening['cashinhand'] + opening['cashatbank']
+
+            finalIncomeTotal = lastYearIncomeTotal + incomeAmountTotal
 
             current_date = datetime.today()
 
-            extot = sum(expense['amount'] for expense in expenseData)
-            a = fin - sum(expense['amount'] for expense in expenseData)
+            closingBalanceTotal = sum(expense['amount'] for expense in expenseData)
 
-            b = 0
+            cashAtBank1 = 0
+
             for opening in openingData:
-                b = a - opening['cashatbankexp']
+                cashAtBank1 = opening['cashatbankexp']
 
-            finexp = extot + a
+            value = closingBalanceTotal + cashAtBank1
+
+            cashInHand = finalIncomeTotal - value
+
+            finexp = cashInHand + closingBalanceTotal + cashAtBank1
 
             result = Income.objects.values('income_name').annotate(total_amt=Sum('amount'))
             expx = Expense.objects.values('expense_name').annotate(exp_tot=Sum('amount'))
 
             response_data = {
                 "result": result,
-                "tot": tot,
-                "extot": extot,
+                "tot": incomeAmountTotal,
+                "extot": closingBalanceTotal,
                 "openings": openingSerializer.data,
-                "fin": fin,
-                "b": b,
+                "fin": finalIncomeTotal,
+                "b": cashInHand,
+                "finexp": finexp,
+                "expx": expx,
+                "date": current_date,
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response("User is not authorized", status=status.HTTP_400_BAD_REQUEST)
+
+class ReportView(APIView):
+    def get(self, request):
+        if(request.user.is_authenticated):
+            incomes = Income.objects.all()
+            expenses = Expense.objects.all()
+            openings = Opening.objects.all()
+
+            incomeSerializer = GetIncomeSerializer(incomes, many=True)
+            expenseSerializer = GetExpenseSerializer(expenses, many=True)
+            openingSerializer = OpeningSerializer(openings, many=True)
+
+            incomeData = incomeSerializer.data
+            expenseData = expenseSerializer.data
+            openingData = openingSerializer.data
+
+            incomeAmountTotal = sum(income['amount'] for income in incomeData)
+
+            lastYearIncomeTotal = 0
+
+            for opening in openingData:
+                lastYearIncomeTotal = opening['cashinhand'] + opening['cashatbank']
+
+            finalIncomeTotal = lastYearIncomeTotal + incomeAmountTotal
+
+            current_date = datetime.today()
+
+            closingBalanceTotal = sum(expense['amount'] for expense in expenseData)
+
+            cashAtBank1 = 0
+
+            for opening in openingData:
+                cashAtBank1 = opening['cashatbankexp']
+
+            value = closingBalanceTotal + cashAtBank1
+
+            cashInHand = finalIncomeTotal - value
+
+            finexp = cashInHand + closingBalanceTotal + cashAtBank1
+
+            result = Income.objects.values('income_name').annotate(total_amt=Sum('amount'))
+            expx = Expense.objects.values('expense_name').annotate(exp_tot=Sum('amount'))
+
+            response_data = {
+                "result": result,
+                "tot": incomeAmountTotal,
+                "extot": closingBalanceTotal,
+                "openings": openingSerializer.data,
+                "fin": finalIncomeTotal,
+                "b": cashInHand,
                 "finexp": finexp,
                 "expx": expx,
                 "date": current_date,
@@ -342,74 +406,46 @@ def tilesList(request):
 
 class ExpenseBarChartView(APIView):
     def get(self, request):
-        current_year = datetime.now().year
-
-        start_date = date(current_year, 4, 1)
-        end_date = date(current_year + 1, 3, 31)
-
+        # Group by 'mode' and sum the 'amount' for each mode
         expense_data = (
             Expense.objects
-            .annotate(date_as_date=Cast('date', DateField()))
-            .filter(date_as_date__range=(start_date, end_date))
-            .annotate(month=TruncMonth('date_as_date'))
-            .values('month')
-            .annotate(total_amount=Sum('amount'))
-            .order_by('month')
+            .values('expense_name')  # Group by the 'mode' field
+            .annotate(total_amount=Sum('amount'))  # Sum the 'amount' for each mode
+            .order_by('expense_name')  # Optionally, order by mode
         )
 
-        # Step 3: Convert month data to a dictionary
-        expense_dict = {item['month'].strftime('%B'): item['total_amount'] for item in expense_data}
-
-        # Step 4: Adjust the list of months from April to March (Fiscal year)
-        all_months = [
-            'April', 'May', 'June', 'July',
-            'August', 'September', 'October', 'November',
-            'December', 'January', 'February', 'March'
-        ]
-
-        # Step 5: Create the labels and fill in zeros for months with no data
-        labels = all_months
-        data = [expense_dict.get(month, 0) for month in labels]  # Use 0 if no data for the month
-
-        # Step 6: Return the chart data
+        # Prepare the data for the bar chart
         chart_data = {
-            'labels': labels,
-            'data': data
+            'labels': [],
+            'data': []
         }
+
+        # Populate the labels and data lists for the chart
+        for item in expense_data:
+            chart_data['labels'].append(item['expense_name'])
+            chart_data['data'].append(item['total_amount'])
 
         return Response(chart_data)
 
 class IncomeBarChartView(APIView):
     def get(self, request):
-        current_year = datetime.now().year
-
-        start_date = date(current_year, 4, 1)
-        end_date = date(current_year + 1, 3, 31)
-
+        # Group by 'mode' and sum the 'amount' for each mode
         income_data = (
             Income.objects
-            .annotate(date_as_date=Cast('date', DateField()))
-            .filter(date_as_date__range=(start_date, end_date))
-            .annotate(month=TruncMonth('date_as_date'))
-            .values('month')
-            .annotate(total_amount=Sum('amount'))
-            .order_by('month')
+            .values('income_name')  # Group by the 'mode' field
+            .annotate(total_amount=Sum('amount'))  # Sum the 'amount' for each mode
+            .order_by('income_name')  # Optionally, order by mode
         )
 
-        income_dict = {item['month'].strftime('%B'): item['total_amount'] for item in income_data}
-
-        all_months = [
-            'April', 'May', 'June', 'July',
-            'August', 'September', 'October', 'November',
-            'December', 'January', 'February', 'March'
-        ]
-
-        labels = all_months
-        data = [income_dict.get(month, 0) for month in labels]
-
+        # Prepare the data for the bar chart
         chart_data = {
-            'labels': labels,
-            'data': data
+            'labels': [],
+            'data': []
         }
+
+        # Populate the labels and data lists for the chart
+        for item in income_data:
+            chart_data['labels'].append(item['income_name'])
+            chart_data['data'].append(item['total_amount'])
 
         return Response(chart_data)
